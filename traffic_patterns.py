@@ -47,26 +47,47 @@ class ConstantTraffic(TrafficPattern):
 
 
 class PeriodicTraffic(TrafficPattern):
-    """Periodic traffic with sine wave pattern (40s period)"""
+    """Periodic traffic with sine wave pattern (scaled period based on duration)"""
     
     def run(self):
-        info('[Periodic] Video stream: 2-8 Mbps adaptive quality\n')
+        info('[Periodic] Video stream: adaptive quality with smooth oscillation\n')
         
         self.h1.cmd('iperf -s -u -p 5002 > /dev/null 2>&1 &')
         time.sleep(2)
         
         self.start_time = time.time()
-        period = 40  # seconds
+        
+        # Scale period and amplitude based on simulation duration
+        if self.duration > 300:  # > 5 minutes
+            period = 120  # 2-minute cycles for longer runs
+            amplitude = 1.5  # Reduced oscillation: 5 ± 1.5 Mbps (3.5-6.5 Mbps)
+            base = 5
+            jitter_range = 0.15  # ±0.15 Mbps
+        elif self.duration > 120:  # > 2 minutes
+            period = 60  # 1-minute cycles
+            amplitude = 2  # 5 ± 2 Mbps (3-7 Mbps)
+            base = 5
+            jitter_range = 0.2
+        else:  # Short simulations (original behavior)
+            period = 40  # 40-second cycles
+            amplitude = 3  # 5 ± 3 Mbps (2-8 Mbps)
+            base = 5
+            jitter_range = 0.3
+        
+        info(f'  Period: {period}s, Range: {base-amplitude:.1f}-{base+amplitude:.1f} Mbps\n')
         
         while self.remaining() > 0:
-            # Sine wave: 5 ± 3 Mbps
+            # Sine wave with scaled parameters
             phase = (self.elapsed() % period) / period * 2 * math.pi
-            base_rate = 5 + 3 * math.sin(phase)
-            jitter = random.uniform(-0.3, 0.3)
+            base_rate = base + amplitude * math.sin(phase)
+            jitter = random.uniform(-jitter_range, jitter_range)
             bitrate = max(2, base_rate + jitter)
             
             segment = min(3, self.remaining())
-            info(f'  t={self.elapsed():.0f}s: {bitrate:.1f} Mbps\n')
+            
+            # Log every 10 seconds for long runs, every iteration for short runs
+            if self.duration <= 120 or int(self.elapsed()) % 10 == 0:
+                info(f'  t={self.elapsed():.0f}s: {bitrate:.1f} Mbps\n')
             
             self.h2.popen(
                 f'iperf -c {self.h1.IP()} -u -p 5002 -b {bitrate}M -t {int(segment)} '
@@ -112,9 +133,53 @@ class SteppedTraffic(TrafficPattern):
                     ).wait()
 
 
+class RandomBurstTraffic(TrafficPattern):
+    """Highly randomized bursts with unpredictable idle gaps"""
+
+    def run(self):
+        info('[RandomBurst] Chaotic bursts with idle gaps\n')
+
+        self.h1.cmd('iperf -s -u -p 5005 > /dev/null 2>&1 &')
+        time.sleep(2)
+
+        self.start_time = time.time()
+
+        while self.remaining() > 0:
+            burst_duration = random.uniform(1.0, 4.0)
+            idle_duration = random.uniform(0.5, 3.0)
+            burst_rate = random.uniform(2, 9)  # Mbps
+
+            # Occasionally trigger a heavy burst
+            if random.random() < 0.15:
+                burst_rate = random.uniform(10, 15)
+                burst_duration = min(self.remaining(), random.uniform(2.0, 6.0))
+                info(f'  ⚡ Heavy burst: {burst_rate:.1f} Mbps for {burst_duration:.1f}s\n')
+            else:
+                info(f'  Burst: {burst_rate:.1f} Mbps for {burst_duration:.1f}s\n')
+
+            burst_duration = min(burst_duration, self.remaining())
+
+            if burst_duration > 0:
+                self.h2.popen(
+                    f'iperf -c {self.h1.IP()} -u -p 5005 -b {burst_rate}M -t {int(burst_duration)} '
+                    '> /dev/null 2>&1', shell=True
+                ).wait()
+
+            # Random idle/jitter period (simulate silence or background noise)
+            idle_duration = min(idle_duration, self.remaining())
+            if idle_duration > 0:
+                noise_rate = random.uniform(0.2, 1.0)
+                info(f'    Idle jitter: {noise_rate:.1f} Mbps background for {idle_duration:.1f}s\n')
+                self.h3.popen(
+                    f'iperf -c {self.h1.IP()} -u -p 5005 -b {noise_rate}M -t {int(idle_duration)} '
+                    '> /dev/null 2>&1', shell=True
+                ).wait()
+
+
 # Pattern registry
 PATTERNS = {
     'constant': ConstantTraffic,
     'periodic': PeriodicTraffic,
-    'stepped': SteppedTraffic
+    'stepped': SteppedTraffic,
+    'random': RandomBurstTraffic
 }

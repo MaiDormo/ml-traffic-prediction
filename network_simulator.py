@@ -5,7 +5,7 @@ from network_topology import NetworkTopology
 from traffic_patterns import PATTERNS
 
 
-def run_simulation(duration=180, pattern='periodic', capture_file='/tmp/traffic_capture.pcap'):
+def run_simulation(duration=180, pattern='periodic', capture_file='./traffic_capture.pcap'):
     """
     Run network simulation with specified traffic pattern
     
@@ -39,7 +39,7 @@ def main():
     """Main entry point"""
     duration = int(sys.argv[1]) if len(sys.argv) > 1 else 180
     pattern = sys.argv[2] if len(sys.argv) > 2 else 'periodic'
-    capture_file = sys.argv[3] if len(sys.argv) > 3 else '/tmp/traffic_capture.pcap'
+    capture_file = sys.argv[3] if len(sys.argv) > 3 else './traffic_capture.pcap'
     
     if pattern not in PATTERNS:
         print(f'Error: Invalid pattern. Choose: {", ".join(PATTERNS.keys())}')

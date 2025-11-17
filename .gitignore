@@ -3,3 +3,6 @@
 lightning_logs/
 glutonts.py
 *.pcap
+artifacts/
+__pycache__/
+*.pyc

@@ -46,7 +46,7 @@ class NetworkTopology:
         info('*** Testing connectivity\n')
         self.net.pingAll()
     
-    def start_capture(self, output_file='/tmp/traffic_capture.pcap'):
+    def start_capture(self, output_file='./traffic_capture.pcap'):
         """Start packet capture on switch"""
         info(f'*** Starting packet capture: {output_file}\n')
         self.switch.cmd(f'tcpdump -i s1-eth1 -w {output_file} > /dev/null 2>&1 &')

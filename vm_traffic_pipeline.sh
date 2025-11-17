@@ -4,9 +4,9 @@ echo "=== VM Traffic Collection Pipeline ==="
 
 DURATION=${1:-60} 
 PATTERN=${2:-periodic} 
-OUTPUT_LOCATION=${3-./traffic_capture.pcap}
+OUTPUT_LOCATION=${3-/tmp/traffic_capture.pcap}
 
-echo "Duration: ${DURATION}s, Pattern: ${PATTERN}"
+echo "Duration: ${DURATION}s, Pattern: ${PATTERN}, Output: ${OUTPUT_LOCATION}"
 
 # Clean old data
 echo "[1/4] Cleaning old data..." 
@@ -31,20 +31,3 @@ sudo python3 network_simulator.py $DURATION $PATTERN $OUTPUT_LOCATION
 echo "[4/4] Stopping controller..."
 kill -TERM $RYU_PID 2>/dev/null
 sleep 2
-
-# Process capture
-if [ -f /tmp/traffic_capture.pcap ]; then
-    sudo chown $USER:$USER $OUTPUT_LOCATION
-    PACKETS=$(sudo tcpdump -r $OUTPUT_LOCATION 2>/dev/null | wc -l)
-    echo "✓ Captured $PACKETS packets"
-    
-    python3 pcap_preprocessor.py  $OUTPUT_LOCATION
-    
-    if [ -f traffic_features.csv ]; then
-        echo "✓ Pipeline complete!"
-        echo "Next: python3 train_models.py"
-    fi
-else
-    echo "ERROR: Capture file not found"
-    exit 1
-fi
