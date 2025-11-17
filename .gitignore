@@ -6,3 +6,4 @@ glutonts.py
 artifacts/
 __pycache__/
 *.pyc
+exported.csv
