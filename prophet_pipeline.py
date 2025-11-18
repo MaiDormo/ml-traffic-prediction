@@ -24,8 +24,8 @@ INPUT_CSV_FILE = "exported"
 
 # Basic parameters only
 DT = 2.0  # 2-second bins for aggregation
-AUGMENTER_MULTIPLIER = 5  # Repeat pattern for more data
-RANDOM_NOISE_N_PACKETS = 0.5  # Minimal noise
+AUGMENTER_MULTIPLIER = 4  # Repeat pattern for more data
+RANDOM_NOISE_N_PACKETS = 2  # Minimal noise
 
 
 @dataclass

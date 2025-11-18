@@ -7,3 +7,5 @@ artifacts/
 __pycache__/
 *.pyc
 exported.csv
+*.csv
+*.png

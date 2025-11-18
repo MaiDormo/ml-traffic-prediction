@@ -1,5 +1,3 @@
-import csv
-import datetime
 import os
 from dataclasses import dataclass
 from typing import List, Tuple
@@ -16,8 +14,8 @@ from scipy.fft import fft, fftfreq
 INPUT_CSV_FILE = "exported"
 USE_PROPHET_INPUT = True  # Set to True to use Prophet's preprocessed data
 DT = 2.0
-AUGMENTER_MULTIPLIER = 5
-RANDOM_NOISE_N_PACKETS = 0.5
+AUGMENTER_MULTIPLIER = 4
+RANDOM_NOISE_N_PACKETS = 2
 
 
 @dataclass
@@ -33,7 +31,7 @@ class DatasetBundle:
     total_samples: int
 
 
-def load_prophet_dataset() -> Tuple[pd.DataFrame, float, float]:
+def load_prophet_dataset() -> pd.DataFrame:
     print("\n" + "=" * 60)
     print("USING PROPHET PREPROCESSED DATA")
     print("=" * 60)
@@ -52,195 +50,64 @@ def load_prophet_dataset() -> Tuple[pd.DataFrame, float, float]:
     print(f"✓ Loaded {len(df)} samples")
     print(f"  Date range: {df['timestamp'].min()} to {df['timestamp'].max()}")
     print(f"  Packet range: {df['target'].min():.2f} to {df['target'].max():.2f}")
-
-    time_diff = (df['timestamp'].iloc[1] - df['timestamp'].iloc[0]).total_seconds()
-    if time_diff == DT:
-        print("\n✓ Timestamps are uniform (2s intervals)")
-        print("  Data is directly compatible with GluonTS")
-    else:
-        print("\n⚠ Reindexing with uniform 2s spacing (GluonTS requirement)")
-        new_index = pd.date_range(
-            start=pd.Timestamp('2025-11-17 19:00:00'),
-            periods=len(df),
-            freq=f'{int(DT)}s'
-        )
-        df['timestamp'] = new_index
-        print(f"  New time range: {df['timestamp'].min()} to {df['timestamp'].max()}")
-
-    L_augmented = len(df)
-    estimated_cycles = 25
-    bins_per_cycle = L_augmented / estimated_cycles
-    detected_period = bins_per_cycle * DT
-
-    print(f"\nEstimated from Prophet data:")
-    print(f"  Period: ~{detected_period:.1f}s")
-    print(f"  Bins per cycle: {bins_per_cycle:.1f}")
-    print(f"  Total cycles: {estimated_cycles:.1f}")
-
-    return df, detected_period, bins_per_cycle
+    return df
 
 
-def aggregate_packets(timestamps: List[datetime.datetime], dt: float) -> List[int]:
-    if not timestamps:
-        return []
+def enforce_uniform_grid(df: pd.DataFrame, dt_seconds: float) -> Tuple[pd.DataFrame, str]:
+    print("\nEnsuring uniform timestamps...")
+    df = df.sort_values('timestamp').reset_index(drop=True)
+    diffs = (df['timestamp'].diff().dt.total_seconds().dropna())
+    inferred_step = float(diffs.median()) if not diffs.empty else dt_seconds
+    step_seconds = dt_seconds if abs(inferred_step - dt_seconds) < 1e-6 else inferred_step
 
-    bins: List[int] = []
-    current_bin = 0
-    bin_start = timestamps[0]
-
-    for timestamp in timestamps:
-        if (timestamp - bin_start).total_seconds() > dt:
-            bins.append(current_bin)
-            current_bin = 1
-            bin_start = timestamp
-        else:
-            current_bin += 1
-
-    bins.append(current_bin)
-    return bins
-
-
-def detect_period(packet_counts: List[float], dt: float) -> float:
-    N = len(packet_counts)
-    if not N:
-        return dt
-
-    data_normalized = np.array(packet_counts) - np.mean(packet_counts)
-    yf = fft(data_normalized)
-    xf = fftfreq(N, dt)
-
-    positive_freq_idx = xf > 0
-    frequencies = xf[positive_freq_idx]
-    power = np.abs(yf[positive_freq_idx])
-
-    if len(power) == 0:
-        return (N * dt) / 2
-
-    dominant_freq = frequencies[np.argmax(power)]
-    detected_period = 1.0 / dominant_freq if dominant_freq > 0 else (N * dt) / 2
-
-    top_3_idx = np.argsort(power)[-3:][::-1]
-    print(f"\nTop 3 detected frequencies:")
-    for i, idx in enumerate(top_3_idx, 1):
-        freq = frequencies[idx]
-        period = 1.0 / freq if freq > 0 else float('inf')
-        print(f"  {i}. Frequency: {freq:.4f} Hz, Period: {period:.1f}s, Power: {power[idx]:.1f}")
-
-    return detected_period
-
-
-def load_raw_dataset() -> Tuple[pd.DataFrame, float, float]:
-    raw_input_file_path = os.path.join('./', INPUT_CSV_FILE + ".csv")
-    now = datetime.datetime.now()
-    timestamps: List[datetime.datetime] = []
-
-    print(f"Reading input file: {raw_input_file_path}")
-    with open(raw_input_file_path) as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=',')
-        next(csv_reader)
-        for row in csv_reader:
-            try:
-                timestamps.append(now + datetime.timedelta(seconds=float(row[1])))
-            except (ValueError, IndexError):
-                continue
-    print(f"Loaded {len(timestamps)} packets")
-
-    if timestamps:
-        max_time = max(timestamps)
-        timestamps = [ts for ts in timestamps if (max_time - ts).total_seconds() >= 1.0]
-        print(f"After removing last second: {len(timestamps)} packets")
-
-    print(f"\nAggregating into {DT}s bins...")
-    packet_counts = aggregate_packets(timestamps, DT)
-    L = len(packet_counts)
-    print(f"Created {L} time bins")
-
-    print("\n" + "=" * 60)
-    print("AUTO-DETECTING PERIOD")
-    print("=" * 60)
-
-    detected_period = detect_period(packet_counts, DT)
-    if detected_period <= 0:
-        detected_period = (L * DT) / 2
-        print(f"⚠ Using fallback: {detected_period:.1f}s")
-
-    bins_per_cycle = detected_period / DT
-    cycles = L / bins_per_cycle
-
-    print(f"✓ Period: {detected_period:.1f}s")
-    print(f"  Bins per cycle: {bins_per_cycle:.1f}")
-    print(f"  Cycles in data: {cycles:.2f}")
-    print("=" * 60)
-
-    print(f"\nAugmenting data (repeating {AUGMENTER_MULTIPLIER}x)...")
-    augmented_counts: List[float] = []
-    for _ in range(AUGMENTER_MULTIPLIER):
-        augmented_counts.extend(packet_counts)
-    print(f"Total data points after augmentation: {len(augmented_counts)}")
-
-    print(f"Adding minimal noise (±{RANDOM_NOISE_N_PACKETS} packets)...")
-    for idx in range(len(augmented_counts)):
-        noise = (np.random.random() - 0.5) * 2 * RANDOM_NOISE_N_PACKETS
-        augmented_counts[idx] = max(0, augmented_counts[idx] + noise)
-
-    start_time = timestamps[0]
-    time_index = pd.date_range(
-        start=start_time,
-        periods=len(augmented_counts),
-        freq=pd.Timedelta(seconds=int(DT))
+    freq = f'{int(step_seconds)}s' if step_seconds < 60 else (
+        'h' if step_seconds >= 3600 else f'{int(step_seconds // 60)}min'
     )
 
-    df = pd.DataFrame({'timestamp': time_index, 'target': augmented_counts})
-    print(f"\nDataset statistics:")
-    print(f"  Shape: {df.shape}")
-    print(f"  Time range: {df['timestamp'].min()} to {df['timestamp'].max()}")
-    print(f"  Target range: {df['target'].min():.1f} - {df['target'].max():.1f}")
-    print(f"  Mean: {df['target'].mean():.1f}, Std: {df['target'].std():.1f}")
-
-    return df, detected_period, bins_per_cycle
-
-
-def ensure_uniform_timestamps(df: pd.DataFrame) -> Tuple[pd.DataFrame, str]:
-    print(f"\nEnsuring uniform timestamps for GluonTS...")
-    time_diff = (df['timestamp'].iloc[1] - df['timestamp'].iloc[0]).total_seconds()
-    start_time = df['timestamp'].iloc[0]
-    n_samples = len(df)
-
-    if time_diff >= 3600:
-        freq_str = 'h'
-        print("  Detected frequency: hourly")
-        index = pd.date_range(start=start_time, periods=n_samples, freq=freq_str)
-    elif time_diff >= 60:
-        freq_str = f'{int(time_diff // 60)}min'
-        print(f"  Detected frequency: {freq_str}")
-        index = pd.date_range(start=start_time, periods=n_samples, freq=freq_str)
-    else:
-        freq_str = f'{int(time_diff)}s'
-        print(f"  Detected frequency: {freq_str}")
-        index = pd.date_range(start=start_time, periods=n_samples, freq=pd.Timedelta(seconds=int(time_diff)))
-
+    start = df['timestamp'].iloc[0]
+    uniform_index = pd.date_range(start=start, periods=len(df), freq=pd.to_timedelta(step_seconds, unit='s'))
     df = df.copy()
-    df['timestamp'] = index
-    print(f"  ✓ Recreated {n_samples} uniform timestamps")
-    return df, freq_str
+    df['timestamp'] = uniform_index
+    print(f"  ✓ Uniform grid created ({freq}), range {uniform_index[0]} → {uniform_index[-1]}")
+    return df, freq
+
+
+def detect_period(packet_counts: np.ndarray, dt: float) -> float:
+    N = len(packet_counts)
+    if N == 0:
+        return dt
+    centered = packet_counts - np.mean(packet_counts)
+    yf = fft(centered)
+    xf = fftfreq(N, dt)
+    mask = xf > 0
+    if not np.any(mask):
+        return (N * dt) / 2
+    dominant_freq = xf[mask][np.argmax(np.abs(yf[mask]))]
+    return 1.0 / dominant_freq if dominant_freq > 0 else (N * dt) / 2
+
+
+def describe_period(df: pd.DataFrame, dt: float) -> Tuple[float, float]:
+    detected_period = detect_period(df['target'].values, dt)
+    bins_per_cycle = detected_period / dt
+    total_cycles = len(df) / bins_per_cycle if bins_per_cycle else 0
+    print(f"\nDetected cycle stats:")
+    print(f"  Period: {detected_period:.1f}s")
+    print(f"  Bins per cycle: {bins_per_cycle:.1f}")
+    print(f"  Total cycles in dataset: {total_cycles:.1f}")
+    return detected_period, bins_per_cycle
 
 
 def compute_adaptive_parameters(total_samples: int, bins_per_cycle: float) -> Tuple[int, int]:
     prediction_length = min(100, total_samples // 4)
     context_length = max(int(bins_per_cycle * 3), prediction_length * 2)
-    context_length = min(context_length, total_samples - prediction_length - 10)
-
+    buffer = max(10, prediction_length)
+    context_length = min(context_length, total_samples - prediction_length - buffer)
     if context_length + prediction_length >= total_samples:
-        raise ValueError(
-            "Not enough data for training. Increase capture duration or augmentation."
-        )
-
-    print(f"\nAdaptive parameters (matching Prophet):")
+        raise ValueError("Not enough data for training. Increase capture duration or augmentation.")
+    print(f"\nAdaptive parameters:")
     print(f"  Prediction length: {prediction_length} bins ({prediction_length / bins_per_cycle:.1f} cycles)")
     print(f"  Context length: {context_length} bins ({context_length / bins_per_cycle:.1f} cycles)")
-    print(f"  Total required: {context_length + prediction_length} bins")
-    print(f"  Available: {total_samples} bins")
-
+    print(f"  Total required: {context_length + prediction_length}, available: {total_samples}")
     return prediction_length, context_length
 
 
@@ -442,14 +309,14 @@ def summarize_run(bundle: DatasetBundle, metrics: dict):
 
 
 def main() -> None:
-    if USE_PROPHET_INPUT:
-        df, detected_period, bins_per_cycle = load_prophet_dataset()
-    else:
-        df, detected_period, bins_per_cycle = load_raw_dataset()
+    if not USE_PROPHET_INPUT:
+        raise RuntimeError("Raw capture path not implemented in this refactor.")
 
-    df, freq = ensure_uniform_timestamps(df)
+    df = load_prophet_dataset()
+    df, freq = enforce_uniform_grid(df, DT)
+    detected_period, bins_per_cycle = describe_period(df, DT)
+
     prediction_length, context_length = compute_adaptive_parameters(len(df), bins_per_cycle)
-
     train_dataset, test_dataset, train_df, test_df = build_gluonts_datasets(df, freq, prediction_length)
     predictor = train_predictor(train_dataset, freq, prediction_length, context_length)
     forecasts, timeseries = generate_predictions(predictor, test_dataset)
