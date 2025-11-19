@@ -1,61 +1,43 @@
-from mininet.log import setLogLevel, info
 import sys
-
+from mininet.log import setLogLevel, info
 from network_topology import NetworkTopology
 from traffic_patterns import PATTERNS
 
-
-def run_simulation(duration=180, pattern='periodic', capture_file='./traffic_capture.pcap'):
-    """
-    Run network simulation with specified traffic pattern
-    
-    Args:
-        duration: Simulation duration in seconds
-        pattern: Traffic pattern to use (constant, periodic, stepped)
-        capture_file: Path to save packet capture
-    """
-    # Create network topology
-    topology = NetworkTopology(controller_port=6653)
+def run_simulation(duration, pattern, capture_file, topo_type):
+    # Pass topo_type to NetworkTopology
+    topology = NetworkTopology(controller_port=6653, topo_type=topo_type)
     topology.create()
     topology.start()
     
-    # Start packet capture
     topology.start_capture(capture_file)
     
-    # Generate traffic
-    info(f'\n*** Generating {pattern} traffic for {duration}s\n')
-    pattern_class = PATTERNS[pattern]
-    traffic_generator = pattern_class(hosts=topology.get_hosts(), duration=duration)
-    traffic_generator.run()
+    info(f'\n*** Generating {pattern} traffic on {topo_type} topology for {duration}s\n')
     
-    # Cleanup
+    # Traffic Generation
+    if pattern in PATTERNS:
+        pattern_class = PATTERNS[pattern]
+        # Pass all hosts to the pattern
+        traffic_generator = pattern_class(hosts=topology.get_hosts(), duration=duration)
+        traffic_generator.run()
+    else:
+        info(f"Pattern {pattern} not found, skipping traffic.\n")
+    
     topology.stop_capture()
     topology.stop()
-    
     info(f'*** Capture saved: {capture_file}\n')
 
-
 def main():
-    """Main entry point"""
-    duration = int(sys.argv[1]) if len(sys.argv) > 1 else 180
+    duration = int(sys.argv[1]) if len(sys.argv) > 1 else 60
     pattern = sys.argv[2] if len(sys.argv) > 2 else 'periodic'
     capture_file = sys.argv[3] if len(sys.argv) > 3 else './traffic_capture.pcap'
-    
-    if pattern not in PATTERNS:
-        print(f'Error: Invalid pattern. Choose: {", ".join(PATTERNS.keys())}')
-        sys.exit(1)
+    topo_type = sys.argv[4] if len(sys.argv) > 4 else 'star'  # New Argument
     
     info('='*60 + '\n')
-    info('NETWORK TRAFFIC SIMULATOR\n')
-    info('='*60 + '\n')
-    info(f'Duration: {duration}s\n')
-    info(f'Pattern: {pattern}\n')
-    info(f'Capture: {capture_file}\n')
+    info(f'NETWORK SIMULATOR: {topo_type.upper()} Topology | Pattern: {pattern}\n')
     info('='*60 + '\n')
     
     setLogLevel('info')
-    run_simulation(duration, pattern, capture_file)
-
+    run_simulation(duration, pattern, capture_file, topo_type)
 
 if __name__ == '__main__':
     main()

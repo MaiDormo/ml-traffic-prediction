@@ -5,24 +5,20 @@ from mininet.log import info
 
 
 class TrafficPattern:
-    """Base class for traffic generation patterns"""
-    
     def __init__(self, hosts, duration):
-        self.h1, self.h2, self.h3, self.h4 = hosts
+        self.hosts = hosts # List of all hosts
         self.duration = duration
         self.start_time = None
     
     def run(self):
-        """Override this method in subclasses"""
         raise NotImplementedError
     
     def elapsed(self):
-        """Get elapsed time since start"""
         return time.time() - self.start_time if self.start_time else 0
     
     def remaining(self):
-        """Get remaining time"""
         return max(0, self.duration - self.elapsed())
+
 
 
 class ConstantTraffic(TrafficPattern):
@@ -34,63 +30,50 @@ class ConstantTraffic(TrafficPattern):
         self.h1.cmd('iperf -s -u -p 5001 > /dev/null 2>&1 &')
         time.sleep(2)
         
-        self.start_time = time.time()
+        # Inside any TrafficPattern run() method
+        hosts = [self.h1, self.h2, self.h3, self.h4]
+
         while self.remaining() > 0:
-            noise_factor = random.uniform(0.9, 1.1)
-            bitrate = 5 * noise_factor
-            segment = min(5, self.remaining())
+            # Pick two distinct random hosts
+            src, dst = random.sample(hosts, 2)
             
-            self.h2.popen(
-                f'iperf -c {self.h1.IP()} -u -p 5001 -b {bitrate}M -t {int(segment)} '
-                '> /dev/null 2>&1', shell=True
-            ).wait()
+            # src becomes the client, dst becomes the server
+            # Note: You must ensure iperf servers are running on ALL hosts first
+            dst.cmd('iperf -s -u -p 5001 > /dev/null 2>&1 &') 
+            
+            # Send traffic
+            src.popen(f'iperf -c {dst.IP()} ...')
 
 
 class PeriodicTraffic(TrafficPattern):
-    """Periodic traffic with sine wave pattern (scaled period based on duration)"""
-    
+    """Authentic: Mesh traffic (Any-to-Any) with Sine Wave intensity"""
     def run(self):
-        info('[Periodic] Video stream: adaptive quality with smooth oscillation\n')
+        info('[Periodic] Mesh Sine Wave: Variable Load across all nodes\n')
         
-        self.h1.cmd('iperf -s -u -p 5002 > /dev/null 2>&1 &')
+        # Start iperf servers on ALL hosts so anyone can receive
+        for h in self.hosts:
+            h.cmd('iperf -s -u -p 5001 > /dev/null 2>&1 &')
+        
         time.sleep(2)
-        
         self.start_time = time.time()
-        
-        # Scale period and amplitude based on simulation duration
-        if self.duration > 300:  # > 5 minutes
-            period = 120  # 2-minute cycles for longer runs
-            amplitude = 1.5  # Reduced oscillation: 5 ± 1.5 Mbps (3.5-6.5 Mbps)
-            base = 5
-            jitter_range = 0.15  # ±0.15 Mbps
-        elif self.duration > 120:  # > 2 minutes
-            period = 60  # 1-minute cycles
-            amplitude = 2  # 5 ± 2 Mbps (3-7 Mbps)
-            base = 5
-            jitter_range = 0.2
-        else:  # Short simulations (original behavior)
-            period = 40  # 40-second cycles
-            amplitude = 3  # 5 ± 3 Mbps (2-8 Mbps)
-            base = 5
-            jitter_range = 0.3
-        
-        info(f'  Period: {period}s, Range: {base-amplitude:.1f}-{base+amplitude:.1f} Mbps\n')
+        period = 60
         
         while self.remaining() > 0:
-            # Sine wave with scaled parameters
+            # 1. Calculate Network Load (Sine Wave)
             phase = (self.elapsed() % period) / period * 2 * math.pi
-            base_rate = base + amplitude * math.sin(phase)
-            jitter = random.uniform(-jitter_range, jitter_range)
-            bitrate = max(2, base_rate + jitter)
+            base_bw = 3.0 
+            amplitude = 2.0
+            current_bw = base_bw + amplitude * math.sin(phase) # 1Mbps to 5Mbps
             
+            # 2. Pick random pairs (Mesh Traffic)
+            src, dst = random.sample(self.hosts, 2)
+            
+            # 3. Generate Traffic
             segment = min(3, self.remaining())
+            info(f'  t={self.elapsed():.0f}s | {src.name}->{dst.name} | {current_bw:.2f} Mbps\n')
             
-            # Log every 10 seconds for long runs, every iteration for short runs
-            if self.duration <= 120 or int(self.elapsed()) % 10 == 0:
-                info(f'  t={self.elapsed():.0f}s: {bitrate:.1f} Mbps\n')
-            
-            self.h2.popen(
-                f'iperf -c {self.h1.IP()} -u -p 5002 -b {bitrate}M -t {int(segment)} '
+            src.popen(
+                f'iperf -c {dst.IP()} -u -p 5001 -b {current_bw}M -t {segment} '
                 '> /dev/null 2>&1', shell=True
             ).wait()
 
@@ -176,10 +159,40 @@ class RandomBurstTraffic(TrafficPattern):
                 ).wait()
 
 
+class WebBrowsingTraffic(TrafficPattern):
+    """Authentic: HTTP/TCP Traffic (Browsing Simulation)"""
+    def run(self):
+        info('[Web] HTTP Browsing: h1 serves content, others download\n')
+        
+        # h1 acts as Web Server
+        server = self.hosts[0] # h1
+        clients = self.hosts[1:] # h2, h3, h4
+        
+        # Create dummy index.html
+        server.cmd('echo "Welcome to the authentic web simulation" > index.html')
+        # Start Python HTTP Server
+        server.cmd('python3 -m http.server 8000 &')
+        time.sleep(2)
+        
+        self.start_time = time.time()
+        
+        while self.remaining() > 0:
+            client = random.choice(clients)
+            wait_time = random.uniform(0.5, 2.0) # Think time
+            
+            info(f'  t={self.elapsed():.0f}s | {client.name} requesting HTTP page...\n')
+            
+            # wget in background
+            client.cmd(f'wget -O /dev/null http://{server.IP()}:8000/index.html > /dev/null 2>&1 &')
+            
+            time.sleep(wait_time)
+
 # Pattern registry
 PATTERNS = {
     'constant': ConstantTraffic,
     'periodic': PeriodicTraffic,
     'stepped': SteppedTraffic,
-    'random': RandomBurstTraffic
+    'random': RandomBurstTraffic,
+    'periodic': PeriodicTraffic,
+    'web': WebBrowsingTraffic
 }
