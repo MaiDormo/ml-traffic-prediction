@@ -1,33 +1,67 @@
-# ML Traffic Prediction
+# Network Traffic Prediction Pipeline
 
-End-to-end pipeline for capturing Mininet traffic, preprocessing it, and comparing Prophet and GluonTS (DeepAR) forecasts. The raw capture (`exported.csv` by default) remains at the repository root, while all generated artifacts are organized under `artifacts/`.
+This project implements an end-to-end machine learning pipeline for simulating, capturing, and forecasting network traffic. It integrates **Mininet** for network simulation with **Prophet** and **GluonTS (DeepAR)** for time-series forecasting, providing a comparative analysis of statistical versus deep learning approaches.
 
-## Workflow
+## 🚀 Features
 
-1. **Capture traffic**
-   - Use the Mininet + Ryu setup (`network_topology.py`, `sdn_controller.py`, `traffic_patterns.py`, `vm_traffic_pipeline.sh`) to produce `exported.csv`.
-2. **Prophet preprocessing + training**
-   - `python3 preprocess.py`
-   - Performs FFT/autocorrelation period detection, augmentation, and Prophet training with uniform 2 s timestamps to stay aligned with GluonTS.
-   - Outputs CSVs and plots under `artifacts/prophet/`:
-     - `exported_prophet_input.csv`, `exported_prophet_insample.csv`, `exported_prophet_forecast.csv`
-     - `prophet_forecast.png`, `prophet_components.png`, `prophet_fit_quality.png`, `traffic_plot.png`
-3. **GluonTS DeepAR training**
-   - `python3 gluton_preprocessor.py`
-   - Consumes Prophet’s preprocessed data by default, enforces uniform timestamps, computes adaptive context/prediction windows, trains DeepAR, and exports diagnostics under `artifacts/gluonts/`:
-     - `exported_gluonts_forecast.csv`, `exported_gluonts_metrics.csv`
-     - `gluonts_forecast.png`, `gluonts_forecast_detail.png`
-4. **(Optional) Model comparison**
-   - `python3 compare_models.py` (if present) can ingest the artifacts above for side-by-side evaluation.
+- **Network Simulation**: Custom Mininet topologies (Star, Tree) with SDN controller integration (Ryu).
+- **Traffic Generation**: Diverse traffic patterns including Periodic, Random Bursts, and Daily Cycles.
+- **Data Pipeline**: Automated PCAP parsing, time-binning, data augmentation, and noise injection.
+- **Model Comparison**: Side-by-side evaluation of Prophet and DeepAR on identical training splits.
 
-## Artifact Management
+## 📂 Project Structure
 
-- `artifacts/` is ignored by git; feel free to keep multiple timestamped runs inside (e.g., `artifacts/2025-11-17/prophet/...`).
-- To keep a clean working tree, move or delete large CSV/PNG outputs after collecting the relevant metrics.
-- If you need to share results, copy the curated files out of `artifacts/` before committing.
+- `network_simulator.py`: Mininet topology and traffic generation script.
+- `sdn_controller.py`: Ryu-based SDN controller for flow management.
+- `data_processor.py`: Handles PCAP ingestion and time-series preprocessing.
+- `models.py`: Adapter classes for Prophet and DeepAR models.
+- `main.py`: Orchestrator for the data loading, training, and evaluation pipeline.
+- `config.py`: Centralized configuration for simulation and model parameters.
 
-## Next Steps / Ideas
+## 🛠️ Usage
 
-- Expand `traffic_patterns.py` with additional generators (e.g., RandomBurstTraffic already included).
-- Extend README with concrete comparison metrics once `compare_models.py` is finalized.
-- Consider wiring `vm_traffic_pipeline.sh` so it runs the full pipeline (capture → preprocess → GluonTS → comparison) in one go.
+### 1. Traffic Generation & Capture
+
+Use the provided shell script to spin up the Mininet environment, generate traffic, and capture the output.
+
+```bash
+# Syntax: ./vm_traffic_pipeline.sh <duration> <pattern> <output_file> <topology>
+sudo ./vm_traffic_pipeline.sh 180 daily ./traffic_capture.pcap tree
+```
+
+### 2. Training & Evaluation
+
+Run the main pipeline to process the captured data and train the models.
+
+```bash
+python3 main.py
+```
+
+## 📊 Outputs & Artifacts
+
+All generated files are stored in the `output` directory:
+
+| Category | File | Description |
+|----------|------|-------------|
+| **Data** | `output/processed_original.csv` | Raw time-series data from capture. |
+| | `output/processed_augmented.csv` | Augmented training data with noise. |
+| **Visuals** | `dataset_overview.png` | Comparison of original vs. augmented data. |
+| | `model_comparison.png` | Combined forecast plot of all models. |
+| **Prophet** | `plot_prophet.png` | Forecast visualization for Prophet. |
+| | `output/metrics_prophet.txt` | MSE and MAE metrics. |
+| **DeepAR** | `plot_deepar.png` | Forecast visualization for DeepAR. |
+| | `output/metrics_deepar.txt` | MSE and MAE metrics. |
+
+## 📈 Model Comparison
+
+The pipeline automatically generates a comparison of the actual traffic versus the predicted values from both models.
+
+![Model Comparison](output/model_comparison.png)
+
+## ⚙️ Configuration
+
+Modify `config.py` to adjust:
+
+- **Preprocessing**: Bin size (`DT`), augmentation factors, and noise levels.
+- **Training**: Epochs, context length, and test split ratios.
+- **Paths**: Input/Output directories.
