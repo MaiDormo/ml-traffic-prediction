@@ -2,7 +2,7 @@
 
 echo "=== VM Traffic Collection Pipeline ==="
 
-DURATION=${1:-600}
+DURATION=${1:-180}
 PATTERN=${2:-daily}
 OUTPUT_LOCATION=${3-/tmp/traffic_capture.pcap}
 TOPO_TYPE=${4:-tree}  # Added support for topology argument
@@ -16,7 +16,7 @@ rm -f $OUTPUT_LOCATION traffic_features.csv
 
 # Start controller
 echo "[2/5] Starting SDN controller..."
-ryu-manager sdn_controller.py > ryu.log 2>&1 &
+ryu-manager sdn_controller.py 2>&1 &
 RYU_PID=$!
 sleep 5
 

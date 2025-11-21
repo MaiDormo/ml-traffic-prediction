@@ -10,7 +10,7 @@ class Config:
     
     # Preprocessing
     DT: float = 2.0  # Bin size in seconds (Aggregation window)
-    AUGMENT_MULTIPLIER: int = 5
+    AUGMENT_MULTIPLIER: int = 3
     ADD_NOISE: bool = True
     NOISE_LEVEL: int = 2
     
@@ -19,7 +19,7 @@ class Config:
     MAX_TEST_SAMPLES: int = 100
     
     # GluonTS Specific
-    CONTEXT_LENGTH_MULTIPLIER: int = 3
+    CONTEXT_LENGTH_MULTIPLIER: int = 1
     EPOCHS: int = 10
     
     def __post_init__(self):

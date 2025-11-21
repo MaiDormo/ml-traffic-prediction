@@ -3,11 +3,10 @@ from mininet.net import Mininet
 from mininet.node import RemoteController
 from mininet.log import info
 
-
 class NetworkTopology:
     """Manages Mininet network topology and operations"""
     
-    def __init__(self, controller_port=6653, topo_type = 'star'):
+    def __init__(self, controller_port=6653, topo_type='star'):
         self.topo_type = topo_type
         self.controller_port = controller_port
         self.net = None
@@ -16,13 +15,12 @@ class NetworkTopology:
     
     def create(self):
         info(f'*** Creating {self.topo_type} topology\n')
+        
+        # Initialize Mininet ONCE
         self.net = Mininet(controller=RemoteController)
         self.net.addController('c0', port=self.controller_port)
 
         if self.topo_type == 'star':
-            # Add controller
-            self.net.addController('c0', port=self.controller_port)
-            
             # Add hosts
             self.hosts['h1'] = self.net.addHost('h1', ip='10.0.0.1/24')
             self.hosts['h2'] = self.net.addHost('h2', ip='10.0.0.2/24')
@@ -36,12 +34,12 @@ class NetworkTopology:
             for host in self.hosts.values():
                 self.net.addLink(host, self.switch)
             
-            info(f'*** Topology: 4 hosts connected to 1 switch\n')
+            info(f'*** Topology: STAR (4 hosts -> 1 switch)\n')
             
         elif self.topo_type == 'tree':
             # Core Switch
             s1 = self.net.addSwitch('s1')
-            self.switch = s1  # <--- FIX: Assign to class attribute for capture
+            self.switch = s1  # Capture point
             
             # Edge Switches
             s2 = self.net.addSwitch('s2')
@@ -66,8 +64,13 @@ class NetworkTopology:
             # Connect Dept B to Switch 3
             self.net.addLink(h3, s3)
             self.net.addLink(h4, s3)
+
+            info("       [s1] (Core)\n")
+            info("      /    \\\n")
+            info("   [s2]    [s3]\n")
+            info("   /  \\    /  \\\n")
+            info(" [h1][h2][h3][h4]\n")
         
-    
     def start(self):
         info('*** Starting network\n')
         self.net.start()
@@ -77,7 +80,9 @@ class NetworkTopology:
     
     def start_capture(self, output_file='./traffic_capture.pcap'):
         info(f'*** Starting packet capture on Core Switch: {output_file}\n')
-        # Capture on "any" interface to see all traffic passing through the switch
+        # Use 'any' interface to capture all traffic passing through s1
+        # Note: This creates Linux SLL headers (LinkType 113). 
+        # DataProcessor must handle this.
         self.switch.cmd(f'tcpdump -i any -w {output_file} > /dev/null 2>&1 &')
         time.sleep(1)
     
@@ -93,4 +98,3 @@ class NetworkTopology:
     
     def get_hosts(self):
         return list(self.hosts.values())
-    
