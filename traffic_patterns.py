@@ -187,6 +187,53 @@ class WebBrowsingTraffic(TrafficPattern):
             
             time.sleep(wait_time)
 
+
+class DayCycleTraffic(TrafficPattern):
+    """
+    Simulates a full day cycle: Rise -> Peak -> Fall.
+    Non-repetitive. Tests if model learns the 'Trend'.
+    """
+    def run(self):
+        info('[DayCycle] Simulating Morning -> Peak -> Evening cycle\n')
+        
+        # Start servers on all hosts
+        for h in self.hosts:
+            h.cmd('iperf -s -u -p 5001 > /dev/null 2>&1 &')
+        
+        time.sleep(2)
+        self.start_time = time.time()
+        
+        # We map the total duration to a 0 -> Pi cycle (0 to 180 degrees)
+        # sin(0) = 0 (Morning), sin(Pi/2) = 1 (Noon), sin(Pi) = 0 (Night)
+        
+        while self.remaining() > 0:
+            elapsed = self.elapsed()
+            
+            # Calculate position in the "day" (0.0 to 3.14)
+            day_progress = (elapsed / self.duration) * math.pi
+            
+            # Intensity follows a bell curve (Sine wave half-cycle)
+            # Base: 1Mbps, Peak: +8Mbps
+            intensity = 1.0 + (8.0 * math.sin(day_progress))
+            
+            # Add randomness (Clouds/Noise) so it's not perfect
+            jitter = random.uniform(-0.5, 0.5)
+            current_bw = max(0.5, intensity + jitter)
+            
+            # Mesh Traffic: Random Source -> Random Dest
+            src, dst = random.sample(self.hosts, 2)
+            
+            segment = min(2, self.remaining())
+            
+            # Only log significant changes to keep output clean
+            if int(elapsed) % 10 == 0:
+                 info(f'  t={elapsed:.0f}s | Day Phase: {day_progress/math.pi:.2f} | BW: {current_bw:.2f} Mbps\n')
+            
+            src.popen(
+                f'iperf -c {dst.IP()} -u -p 5001 -b {current_bw}M -t {segment} '
+                '> /dev/null 2>&1', shell=True
+            ).wait()
+
 # Pattern registry
 PATTERNS = {
     'constant': ConstantTraffic,
@@ -194,5 +241,6 @@ PATTERNS = {
     'stepped': SteppedTraffic,
     'random': RandomBurstTraffic,
     'periodic': PeriodicTraffic,
-    'web': WebBrowsingTraffic
+    'web': WebBrowsingTraffic,
+    'daily': DayCycleTraffic
 }

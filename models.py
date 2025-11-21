@@ -75,6 +75,7 @@ class DeepARAdapter(BaseModel):
         # Adaptive parameters
         prediction_length = self.test_len
         context_length = int(self.meta.bins_per_cycle * self.cfg.CONTEXT_LENGTH_MULTIPLIER)
+        # context_length = int(len(self.train_df) * 0.8)
         
         ds = PandasDataset(
             self.train_df.set_index('timestamp'), 

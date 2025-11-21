@@ -2,15 +2,15 @@
 
 echo "=== VM Traffic Collection Pipeline ==="
 
-DURATION=${1:-60} 
-PATTERN=${2:-web} 
+DURATION=${1:-600}
+PATTERN=${2:-daily}
 OUTPUT_LOCATION=${3-/tmp/traffic_capture.pcap}
 TOPO_TYPE=${4:-tree}  # Added support for topology argument
 
 echo "Duration: ${DURATION}s, Pattern: ${PATTERN}, Output: ${OUTPUT_LOCATION}, Topo: ${TOPO_TYPE}"
 
 # Clean old data AND Mininet artifacts
-echo "[1/5] Cleaning old data..." 
+echo "[1/5] Cleaning old data..."
 sudo mn -c > /dev/null 2>&1  # <--- ADD THIS LINE (suppress output to keep logs clean)
 rm -f $OUTPUT_LOCATION traffic_features.csv
 
