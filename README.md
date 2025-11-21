@@ -1,4 +1,4 @@
-# Network Traffic Prediction Pipeline
+# Network Traffic Prediction
 
 This project implements an end-to-end machine learning pipeline for simulating, capturing, and forecasting network traffic. It integrates **Mininet** for network simulation with **Prophet** and **GluonTS (DeepAR)** for time-series forecasting, providing a comparative analysis of statistical versus deep learning approaches.
 
