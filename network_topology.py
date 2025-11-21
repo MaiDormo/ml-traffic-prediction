@@ -20,8 +20,6 @@ class NetworkTopology:
         self.net.addController('c0', port=self.controller_port)
 
         if self.topo_type == 'star':
-            self.net = Mininet(controller=RemoteController)
-        
             # Add controller
             self.net.addController('c0', port=self.controller_port)
             
