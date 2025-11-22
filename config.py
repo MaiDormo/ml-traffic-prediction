@@ -15,12 +15,14 @@ class Config:
     NOISE_LEVEL: int = 2
     
     # Model Settings
-    TEST_SPLIT_RATIO: float = 0.25
+    TEST_SPLIT_RATIO: float = 0.20
     MAX_TEST_SAMPLES: int = 100
     
     # GluonTS Specific
-    CONTEXT_LENGTH_MULTIPLIER: int = 1
-    EPOCHS: int = 10
+    # INCREASED: Give model more history (2 full cycles) to see the pattern repeats
+    CONTEXT_LENGTH_MULTIPLIER: int = 2  
+    # INCREASED: DeepAR needs more epochs to converge on complex patterns
+    EPOCHS: int = 30                    
     
     def __post_init__(self):
         self.OUTPUT_DIR.mkdir(exist_ok=True)

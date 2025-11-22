@@ -1,13 +1,14 @@
 import pandas as pd
 import numpy as np
+import torch
 from abc import ABC, abstractmethod
 from typing import Tuple, Dict, Any
+import warnings
 
 from prophet import Prophet
 from gluonts.dataset.pandas import PandasDataset
 from gluonts.torch import DeepAREstimator
 from gluonts.evaluation import make_evaluation_predictions
-
 from config import Config
 from data_processor import DatasetMeta
 
@@ -75,7 +76,6 @@ class DeepARAdapter(BaseModel):
         # Adaptive parameters
         prediction_length = self.test_len
         context_length = int(self.meta.bins_per_cycle * self.cfg.CONTEXT_LENGTH_MULTIPLIER)
-        # context_length = int(len(self.train_df) * 0.8)
         
         ds = PandasDataset(
             self.train_df.set_index('timestamp'), 
@@ -83,12 +83,24 @@ class DeepARAdapter(BaseModel):
             freq=self.cfg.freq_str
         )
         
+        # --- Trainer Configuration ---
+        # Standard CPU execution
+        trainer_kwargs = {
+            'max_epochs': self.cfg.EPOCHS,
+        }
+        
+        # --- Model Architecture ---
         estimator = DeepAREstimator(
             freq=self.cfg.freq_str,
             prediction_length=prediction_length,
             context_length=context_length,
-            trainer_kwargs={'max_epochs': self.cfg.EPOCHS}
+            
+            # Scaling handles traffic volume differences automatically
+            scaling=True,
+            
+            trainer_kwargs=trainer_kwargs
         )
+        
         self.predictor = estimator.train(ds)
 
     def predict(self) -> pd.DataFrame:
