@@ -5,6 +5,7 @@ This project implements an end-to-end machine learning pipeline for simulating, 
 ## 🚀 Features
 
 - **Network Simulation**: Custom Mininet topologies (Star, Tree) with SDN controller integration (Ryu).
+- **Interactive Demo**: Jupyter notebook for multi-day traffic simulation and forecasting without root privileges.
 - **Traffic Generation**: Diverse traffic patterns including Periodic, Random Bursts, and Daily Cycles.
 - **Data Pipeline**: Automated PCAP parsing, time-binning, data augmentation, and noise injection.
 - **Model Comparison**: Side-by-side evaluation of Prophet and DeepAR on identical training splits.
@@ -12,6 +13,7 @@ This project implements an end-to-end machine learning pipeline for simulating, 
 ## 📂 Project Structure
 
 - `network_simulator.py`: Mininet topology and traffic generation script.
+- `demo_multi_day.ipynb`: Interactive notebook for multi-day simulation and model benchmarking.
 - `sdn_controller.py`: Ryu-based SDN controller for flow management.
 - `data_processor.py`: Handles PCAP ingestion and time-series preprocessing.
 - `models.py`: Adapter classes for Prophet and DeepAR models.
@@ -29,7 +31,15 @@ Use the provided shell script to spin up the Mininet environment, generate traff
 sudo ./vm_traffic_pipeline.sh 180 daily ./traffic_capture.pcap tree
 ```
 
-### 2. Training & Evaluation
+### 2. Interactive Demo (No Mininet Required)
+
+For a quick start without setting up the Mininet VM, use the Jupyter Notebook. It simulates 15 days of traffic to benchmark DeepAR vs Prophet.
+
+1. Open `demo_multi_day.ipynb` in VS Code.
+2. Run all cells to generate synthetic data and train models.
+3. View the publication-ready plots inline.
+
+### 3. Training & Evaluation (Full Pipeline)
 
 Run the main pipeline to process the captured data and train the models.
 
