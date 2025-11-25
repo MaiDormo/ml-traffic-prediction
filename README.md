@@ -13,6 +13,7 @@ This project implements an end-to-end machine learning pipeline for simulating, 
 ## 📂 Project Structure
 
 - `network_simulator.py`: Mininet topology and traffic generation script.
+- `vm_traffic_pipeline.sh`: Shell script to orchestrate Mininet simulation and capture.
 - `demo_multi_day.ipynb`: Interactive notebook for multi-day simulation and model benchmarking.
 - `sdn_controller.py`: Ryu-based SDN controller for flow management.
 - `data_processor.py`: Handles PCAP ingestion and time-series preprocessing.
@@ -55,18 +56,19 @@ All generated files are stored in the `output` directory:
 |----------|------|-------------|
 | **Data** | `output/processed_original.csv` | Raw time-series data from capture. |
 | | `output/processed_augmented.csv` | Augmented training data with noise. |
-| **Visuals** | `dataset_overview.png` | Comparison of original vs. augmented data. |
-| | `model_comparison.png` | Combined forecast plot of all models. |
-| **Prophet** | `plot_prophet.png` | Forecast visualization for Prophet. |
+| **Visuals** | `output/dataset_overview.png` | Comparison of original vs. augmented data. |
+| | `output/model_comparison.png` | Combined forecast plot (Main Pipeline). |
+| | `output/demo_results.png` | Multi-day simulation forecast (Interactive Demo). |
+| **Prophet** | `output/plot_prophet.png` | Forecast visualization for Prophet. |
 | | `output/metrics_prophet.txt` | MSE and MAE metrics. |
-| **DeepAR** | `plot_deepar.png` | Forecast visualization for DeepAR. |
+| **DeepAR** | `output/plot_deepar.png` | Forecast visualization for DeepAR. |
 | | `output/metrics_deepar.txt` | MSE and MAE metrics. |
 
 ## 📈 Model Comparison
 
-The pipeline automatically generates a comparison of the actual traffic versus the predicted values from both models.
+The interactive demo generates a professional publication-ready plot comparing the actual traffic versus the predicted values.
 
-![Model Comparison](output/model_comparison.png)
+![Model Comparison](output/demo_results.png)
 
 ## ⚙️ Configuration
 
