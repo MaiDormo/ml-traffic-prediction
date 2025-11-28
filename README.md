@@ -32,7 +32,7 @@ The version of python used by the VM is `3.8.10`, while the version used inside 
 
 **❗ATTENTION (SUGGESTED)❗:** Create a synced folder adding this line to the vagrant file:
 
-```vagrantfile
+```ruby
 config.vm.define "comnetsemu" do |comnetsemu|
     comnetsemu.vm.box = BOX
     # Sync ./ to home directory of vagrant to simplify the install script
