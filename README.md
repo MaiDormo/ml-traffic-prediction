@@ -92,7 +92,7 @@ All generated files are stored in the `output` directory:
 
 The interactive demo generates a professional publication-ready plot comparing the actual traffic versus the predicted values.
 
-![Model Comparison](output/demo_day_results.png)
+![Model Comparison](output/demo_days_results.png)
 
 ### 3. Interactive Demos (No Mininet Required)
 
