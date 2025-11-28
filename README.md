@@ -41,7 +41,7 @@ config.vm.define "comnetsemu" do |comnetsemu|
 
     # --------------------- TO ADD -----------------------------------------
     # Share the host ML project into the VM
-    comnetsemu.vm.synced_folder "../ml-traffic-prediction", "/home/vagrant/ml-traffic-prediction"
+    comnetsemu.vm.synced_folder "path/to/ml-traffic-prediction", "/home/vagrant/ml-traffic-prediction"
     # ---------------------- END -------------------------------------------
 
     # For Virtualbox provider
