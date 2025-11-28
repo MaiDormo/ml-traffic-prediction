@@ -23,7 +23,24 @@ This project implements an end-to-end machine learning pipeline for simulating, 
 
 ## 🛠️ Usage
 
+The traffic generation and analysis/forecasting is developed with this structure in mind:
+
+- **Traffic generation/capture:** should be done inside the virtual machine.
+- **Data analysis/forecasting:** has to be done inside the local machine.
+
+The version of python used by the VM is `3.8.10`, while the version used inside the local machine is `3.12.12`.
+
+**❗ATTENTION (SUGGESTED)❗:** Create a synced folder adding this line to the vagrant file:
+
+```vagrantfile
+comnetsemu.vm.synced_folder "../ml-traffic-prediction", "/path/to/ml-traffic-prediction"
+```
+
+If you do not use a synced folder you need to clone the repo both inside and outside of the vm, and move the generated PCAP file from the repo in the VM to the repo in the local machine via `scp`.
+
+
 ### 1. Traffic Generation & Capture
+
 
 Use the provided shell script to spin up the Mininet environment, generate traffic, and capture the output.
 
@@ -32,21 +49,27 @@ Use the provided shell script to spin up the Mininet environment, generate traff
 sudo ./vm_traffic_pipeline.sh 180 daily ./traffic_capture.pcap tree
 ```
 
-### 2. Interactive Demo (No Mininet Required)
+Different types of traffic can be generated:
 
-For a quick start without setting up the Mininet VM, use the Jupyter Notebook. It simulates 15 days of traffic to benchmark DeepAR vs Prophet.
+```python
+PATTERNS = {
+    'constant': ConstantTraffic, # constant traffic
+    'periodic': PeriodicTraffic, # wave traffic
+    'stepped': SteppedTraffic, # stepped traffic
+    'random': RandomBurstTraffic, # random spyke
+    'web': WebBrowsingTraffic, # random HTTP request
+    'daily': DayCycleTraffic # low traffic at moring-evening, peak at midday
+}
+```
 
-1. Open `demo_multi_day.ipynb` in VS Code.
-2. Run all cells to generate synthetic data and train models.
-3. View the publication-ready plots inline.
-
-### 3. Training & Evaluation (Full Pipeline)
+### 2. Training & Evaluation (Full Pipeline)
 
 Run the main pipeline to process the captured data and train the models.
 
 ```bash
 python3 main.py
 ```
+This script will complete the analysis and forecasting, storing the resulting plots inside the ouptut folder:
 
 ## 📊 Outputs & Artifacts
 
@@ -64,11 +87,22 @@ All generated files are stored in the `output` directory:
 | **DeepAR** | `output/plot_deepar.png` | Forecast visualization for DeepAR. |
 | | `output/metrics_deepar.txt` | MSE and MAE metrics. |
 
+
 ## 📈 Model Comparison
 
 The interactive demo generates a professional publication-ready plot comparing the actual traffic versus the predicted values.
 
-![Model Comparison](output/demo_results.png)
+![Model Comparison](output/demo_day_results.png)
+
+### 3. Interactive Demos (No Mininet Required)
+
+For a quick start without setting up the Mininet VM, use the Jupyter Notebook. There are two available options, each with different time lenght:
+
+- `demo_days.ipynb` which is used to forecast a single day after 32 days (8 days of generated data augmented 4 times).  
+
+1. Open `demo_days.ipynb` in VS Code.
+2. Run all cells to generate synthetic data and train models.
+3. View the plots inline.
 
 ## ⚙️ Configuration
 
