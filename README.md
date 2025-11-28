@@ -33,7 +33,26 @@ The version of python used by the VM is `3.8.10`, while the version used inside 
 **❗ATTENTION (SUGGESTED)❗:** Create a synced folder adding this line to the vagrant file:
 
 ```vagrantfile
-comnetsemu.vm.synced_folder "../ml-traffic-prediction", "/path/to/ml-traffic-prediction"
+config.vm.define "comnetsemu" do |comnetsemu|
+    comnetsemu.vm.box = BOX
+    # Sync ./ to home directory of vagrant to simplify the install script
+    comnetsemu.vm.synced_folder ".", "/vagrant", disabled: true
+    comnetsemu.vm.synced_folder ".", "/home/vagrant/comnetsemu"
+
+    # --------------------- TO ADD -----------------------------------------
+    # Share the host ML project into the VM
+    comnetsemu.vm.synced_folder "../ml-traffic-prediction", "/home/vagrant/ml-traffic-prediction"
+    # ---------------------- END -------------------------------------------
+
+    # For Virtualbox provider
+    comnetsemu.vm.provider "virtualbox" do |vb|
+      vb.name = VM_NAME
+      vb.cpus = CPUS
+      vb.memory = RAM
+      # MARK: The vCPUs should have SSE4 to compile DPDK applications.
+      vb.customize ["setextradata", :id, "VBoxInternal/CPUM/SSE4.1", "1"]
+      vb.customize ["setextradata", :id, "VBoxInternal/CPUM/SSE4.2", "1"]
+    end
 ```
 
 If you do not use a synced folder you need to clone the repo both inside and outside of the vm, and move the generated PCAP file from the repo in the VM to the repo in the local machine via `scp`.
