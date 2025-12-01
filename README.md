@@ -66,7 +66,6 @@ First of all you should install the python packages necessary for the execution 
 pip install -r requirements.txt
 ```
 
-
 Use the provided shell script to spin up the Mininet environment, generate traffic, and capture the output.
 
 ```bash
@@ -96,6 +95,7 @@ Run the main pipeline to process the captured data and train the models.
 ```bash
 python3 main.py
 ```
+
 This script will complete the analysis and forecasting, storing the resulting plots inside the ouptut folder:
 
 ## 📊 Outputs & Artifacts
@@ -113,7 +113,6 @@ All generated files are stored in the `output` directory:
 | | `output/metrics_prophet.txt` | MSE and MAE metrics. |
 | **DeepAR** | `output/plot_deepar.png` | Forecast visualization for DeepAR. |
 | | `output/metrics_deepar.txt` | MSE and MAE metrics. |
-
 
 ## 📈 Model Comparison
 

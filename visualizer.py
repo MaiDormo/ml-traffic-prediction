@@ -4,9 +4,15 @@ from pathlib import Path
 from typing import Dict
 
 def plot_dataset_comparison(df_orig: pd.DataFrame, df_aug: pd.DataFrame, output_path: Path):
+    """Overlay original capture against augmented/synthetic data."""
     plt.figure(figsize=(14, 6))
-    plt.plot(df_aug['timestamp'], df_aug['target'], label='Augmented / Synthetic', color='#7f8c8d', linestyle='--', alpha=0.6)
-    plt.plot(df_orig['timestamp'], df_orig['target'], label='Original Capture', color='#c0392b', linewidth=2.5, alpha=1.0)
+    
+    # Augmented first (background) so original is visible on top
+    plt.plot(df_aug['timestamp'], df_aug['target'], 
+             label='Augmented / Synthetic', color='#7f8c8d', linestyle='--', alpha=0.6)
+    plt.plot(df_orig['timestamp'], df_orig['target'], 
+             label='Original Capture', color='#c0392b', linewidth=2.5, alpha=1.0)
+    
     plt.title("Original vs Augmented Data", fontsize=14, fontweight='bold')
     plt.legend()
     plt.grid(True, alpha=0.3)
@@ -28,20 +34,24 @@ def plot_forecast(df: pd.DataFrame, title: str, output_path: Path):
     print(f"✓ Saved forecast plot: {output_path}")
 
 def plot_model_comparison(results_dict: Dict[str, pd.DataFrame], output_path: Path):
-    # Subplot 1: Comparison
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10), sharex=True, gridspec_kw={'height_ratios': [2, 1]})
+    """Generate 2-panel plot: forecasts + residuals."""
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10), sharex=True, 
+                                    gridspec_kw={'height_ratios': [2, 1]})
     
-    colors = {'Prophet': '#2980b9', 'DeepAR': '#e67e22'}
+    colors = {'Prophet': '#2980b9', 'DeepAR': '#e67e22'}  # Consistent color scheme
     
+    # Plot ground truth (use first model's actuals as reference)
     first_key = list(results_dict.keys())[0]
     df_ref = results_dict[first_key]
-    ax1.plot(df_ref['timestamp'], df_ref['actual'], label='Actual', color='black', linewidth=2, alpha=0.8)
+    ax1.plot(df_ref['timestamp'], df_ref['actual'], 
+             label='Actual', color='black', linewidth=2, alpha=0.8)
 
+    # Overlay each model's predictions
     for name, df in results_dict.items():
         c = colors.get(name, 'green')
         ax1.plot(df['timestamp'], df['mean'], label=f'{name}', color=c, linewidth=2)
         
-        # Subplot 2: Residuals
+        # Subplot 2: Residual errors (actual - predicted)
         residuals = df['actual'] - df['mean']
         ax2.plot(df['timestamp'], residuals, label=f'{name} Error', color=c, alpha=0.7)
 

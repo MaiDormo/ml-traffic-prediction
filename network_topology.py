@@ -16,7 +16,7 @@ class NetworkTopology:
     def create(self):
         info(f'*** Creating {self.topo_type} topology\n')
         
-        # Initialize Mininet ONCE
+        # Initialize Mininet
         self.net = Mininet(controller=RemoteController)
         self.net.addController('c0', port=self.controller_port)
 
@@ -80,9 +80,7 @@ class NetworkTopology:
     
     def start_capture(self, output_file='./traffic_capture.pcap'):
         info(f'*** Starting packet capture on Core Switch: {output_file}\n')
-        # Use 'any' interface to capture all traffic passing through s1
-        # Note: This creates Linux SLL headers (LinkType 113). 
-        # DataProcessor must handle this.
+        # Use 'any' interface to capture all traffic passing through s1 
         self.switch.cmd(f'tcpdump -i any -w {output_file} > /dev/null 2>&1 &')
         time.sleep(1)
     
