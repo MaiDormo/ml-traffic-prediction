@@ -14,7 +14,7 @@ This project implements an end-to-end machine learning pipeline for simulating, 
 
 - `network_simulator.py`: Mininet topology and traffic generation script.
 - `vm_traffic_pipeline.sh`: Shell script to orchestrate Mininet simulation and capture.
-- `demo_multi_day.ipynb`: Interactive notebook for multi-day simulation and model benchmarking.
+- `demo_days.ipynb`: Interactive notebook for multi-day simulation and model benchmarking.
 - `sdn_controller.py`: Ryu-based SDN controller for flow management.
 - `data_processor.py`: Handles PCAP ingestion and time-series preprocessing.
 - `models.py`: Adapter classes for Prophet and DeepAR models.
@@ -60,6 +60,12 @@ If you do not use a synced folder you need to clone the repo both inside and out
 
 ### 1. Traffic Generation & Capture
 
+First of all you should install the python packages necessary for the execution of this project by:
+
+```bash
+pip install -r requirements.txt
+```
+
 
 Use the provided shell script to spin up the Mininet environment, generate traffic, and capture the output.
 
@@ -67,6 +73,8 @@ Use the provided shell script to spin up the Mininet environment, generate traff
 # Syntax: ./vm_traffic_pipeline.sh <duration> <pattern> <output_file> <topology>
 sudo ./vm_traffic_pipeline.sh 180 daily ./traffic_capture.pcap tree
 ```
+
+Note: do not suggest to go below  60 seconds, as it yields to little data for the models.
 
 Different types of traffic can be generated:
 
